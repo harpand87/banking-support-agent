@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "banking-support-agent"
+version = "0.1.0"
+description = "Safety-first, nontransactional banking support and advisory agent"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+llm = ["openai>=1.40.0"]
+retrieval = ["chromadb>=0.5.0"]
+api = ["fastapi>=0.110.0", "uvicorn>=0.30.0"]
+dev = ["pytest>=8.0.0"]
+
+[project.scripts]
+banking-agent = "app.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
