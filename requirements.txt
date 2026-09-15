@@ -1,0 +1,3 @@
+# Full local development install for the banking support agent.
+# This installs the package plus optional LLM, retrieval, API, and test tools.
+-e .[llm,retrieval,api,dev]
