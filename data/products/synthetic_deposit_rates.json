@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "dataset_id": "scenario2-synthetic-deposit-rates-v1",
+  "status": "synthetic_example_only",
+  "as_of_date": "2026-09-26",
+  "jurisdiction": "IN-example-only",
+  "currency": "INR-example-only",
+  "disclaimer": "Illustrative sample values only. Not current bank offers, official rates, or financial recommendations.",
+  "rates": {
+    "FD": {
+      "annual_rate_percent": 6.5,
+      "compounds_per_year": 4,
+      "source": "KB-012"
+    },
+    "RD": {
+      "annual_rate_percent": 6.25,
+      "compounds_per_year": 12,
+      "source": "KB-013"
+    }
+  }
+}

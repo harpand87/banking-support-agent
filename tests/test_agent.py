@@ -6,6 +6,7 @@ def test_grounded_answer_has_source():
     response = BankingAgent().handle("What is the monthly fee for the Everyday Account?")
     assert response.decision == Decision.ANSWER
     assert response.sources == ["KB-001"]
+    assert response.answer.count("The Everyday Account is a synthetic example product") == 1
 
 
 def test_unknown_question_escalates_without_claim():
