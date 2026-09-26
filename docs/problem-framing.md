@@ -39,3 +39,11 @@ Inputs are free-text questions and an optional session identifier. Outputs conta
 ## Edge cases
 
 Paraphrased prohibited requests, ambiguous follow-ups, prompt injection, missing retrieval evidence, stale documents, malformed tool arguments, provider failure, PII in input, contradictory sources, and repeated tool requests are included in evaluation.
+
+## Scenario-2 Workflow Coverage
+
+The sample covers savings (SB), current-account, and PPF opening guidance; KYC checklists; address and email update instructions; safe balance-inquiry routing; illustrative FD/RD rate explanations and maturity calculations; and general investment education. Account creation, KYC submission, contact-detail changes, live balance lookup, and fund selection are not executed. Personalized investment recommendations route to a qualified adviser.
+
+## Acknowledgement
+
+Credit to Anoop for the initial draft and the functional requirements supplied for this capstone. Those requirements shaped the retail-banking persona, original non-transactional baseline, and Scenario-2 epics implemented here.
