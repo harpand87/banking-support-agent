@@ -7,7 +7,7 @@ import pytest
 from app.adaptation import FeedbackProfile
 from app.evaluate import load_cases, run_offline_comparison
 from app.knowledge import ChromaSemanticRetriever, KNOWLEDGE, OpenAIEmbeddingProvider, load_knowledge, search
-from app.llm import OpenAIModel, PROMPT_VARIANTS
+from app.llm import GeminiModel, PROMPT_VARIANTS
 from app.memory import SessionMemory
 from app.models import Decision
 from app.orchestrator import BankingAgent
@@ -53,14 +53,14 @@ class FakeChroma:
         return self.collection
 
 
-class FakeOpenAI:
+class FakeGemini:
     def __init__(self):
         self.requests = []
-        self.chat = SimpleNamespace(completions=SimpleNamespace(create=self.create))
+        self.models = SimpleNamespace(generate_content=self.generate_content)
 
-    def create(self, **request):
+    def generate_content(self, **request):
         self.requests.append(request)
-        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="Grounded response."))])
+        return SimpleNamespace(text="Grounded response.")
 
 
 class FakeEmbeddingClient:
@@ -127,14 +127,15 @@ def test_chroma_vector_store_persists_and_filters_weak_matches(tmp_path):
     assert retriever.search("unrelated query") == []
 
 
-def test_openai_adapter_runs_each_prompt_variant_with_grounding_context():
-    client = FakeOpenAI()
+def test_gemini_adapter_runs_each_prompt_variant_with_grounding_context():
+    client = FakeGemini()
     for variant in PROMPT_VARIANTS:
-        model = OpenAIModel(prompt_variant=variant, client=client)
+        model = GeminiModel(prompt_variant=variant, client=client)
         assert model.answer("Question", ["Approved source KB-001"], "concise") == "Grounded response."
     assert len(client.requests) == 3
-    assert len({request["messages"][0]["content"] for request in client.requests}) == 3
-    assert all("Approved source KB-001" in request["messages"][1]["content"] for request in client.requests)
+    assert len({request["config"]["system_instruction"] for request in client.requests}) == 3
+    assert all("Approved source KB-001" in request["contents"] for request in client.requests)
+    assert all(request["config"]["temperature"] == 0 for request in client.requests)
 
 
 def test_safety_blocks_live_private_actions_and_personalized_advice():

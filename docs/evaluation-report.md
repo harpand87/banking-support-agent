@@ -17,13 +17,13 @@ Reproduce with `python -m app.evaluate`; the sanitized per-case report is `evide
 
 ## Prompt Variants
 
-The same fixed case IDs are available for all provider runs. Run `python -m app.evaluate --live-prompts` to compare `minimal`, `safety_contract`, and `evidence_first` using the configured OpenAI model. `--semantic` adds OpenAI embedding retrieval backed by Chroma. Live provider metrics are not included in the offline report and must be recorded after a credentialed run; the API-backed comparison has not been run in this workspace.
+The same fixed case IDs are available for all provider runs. Run `python -m app.evaluate --live-prompts` to compare `minimal`, `safety_contract`, and `evidence_first` using Gemini (requires `GEMINI_API_KEY`). `--semantic` adds OpenAI embedding retrieval backed by Chroma (requires `OPENAI_API_KEY`). Live provider metrics are not included in the offline report and must be recorded after a credentialed run; the API-backed comparison has not been run in this workspace.
 
 | Variant | Purpose | Live result |
 | --- | --- | --- |
-| `minimal` | Minimal evidence-only instructions | Not run; requires `OPENAI_API_KEY` |
-| `safety_contract` | Explicit non-transactional and privacy contract | Not run; requires `OPENAI_API_KEY` |
-| `evidence_first` | Evidence-first answer and exact source citations | Not run; requires `OPENAI_API_KEY` |
+| `minimal` | Minimal evidence-only instructions | Not run; requires `GEMINI_API_KEY` |
+| `safety_contract` | Explicit non-transactional and privacy contract | Not run; requires `GEMINI_API_KEY` |
+| `evidence_first` | Evidence-first answer and exact source citations | Not run; requires `GEMINI_API_KEY` |
 
 The runner uses temperature zero and sends the unchanged cases to each variant. Deterministic pre-checks bypass generation for refusal/escalation cases by design. Provider costs, model version, date, and full result JSON should be captured when the live run is performed.
 
@@ -38,6 +38,6 @@ The runner uses temperature zero and sends the unchanged cases to each variant. 
 ## Limitations and Next Evidence
 
 - The offline “RAG” score is the deterministic keyword baseline; semantic retrieval is implemented as an optional OpenAI embeddings + Chroma path. The persistent Chroma integration is tested with injected embeddings, but live OpenAI embedding quality was not measured because no API key is configured.
-- Real OpenAI generation and the three prompt variants are implemented and contract-tested with a fake client, but not live-tested in this workspace.
+- Real Gemini generation and the three prompt variants are implemented and contract-tested with a fake client, but not live-tested in this workspace.
 - Synthetic FD/RD rates and formulas are not real bank rates or official maturity quotes.
 - No production deployment, human rubric, official bank source review, or jurisdictional compliance review is claimed.
