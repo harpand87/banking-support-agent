@@ -33,7 +33,7 @@ Run commands from the project root. The default agent is deterministic and offli
     Expected: invalid tool arguments, duplicate calls, unapproved tools, and excess tool calls are recorded as failed or blocked.
 
 11. **RAG comparison**: `python3 -m app.evaluate`
-      Expected: `evidence/evaluation_offline.json` compares all fixed cases with and without retrieval. Live Gemini prompt comparison (`python3 -m app.evaluate --live-prompts`) requires `GEMINI_API_KEY`; semantic vector retrieval (`--semantic`) requires `OPENAI_API_KEY`.
+      Expected: `evidence/evaluation_offline.json` compares all fixed cases with and without retrieval. Live Gemini prompt comparison (`python3 -m app.evaluate --live-prompts`) securely prompts for a Gemini key if `GEMINI_API_KEY` is unset; semantic vector retrieval (`--semantic`) requires `OPENAI_API_KEY`.
 
 12. **Local API smoke test**: run `banking-api`, then call `GET http://127.0.0.1:8000/health` and `POST /v1/answer` with `{"text":"What is the monthly fee for the Everyday Account?"}`.
    Expected: health status `ok`, then a grounded answer citing `KB-001`. Keep this demo bound to localhost; it is unauthenticated and not for customer data.

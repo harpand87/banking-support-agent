@@ -1,3 +1,5 @@
+import getpass
+import os
 from typing import Any, Protocol
 
 
@@ -33,13 +35,19 @@ class GeminiModel:
         model: str = "gemini-2.5-flash",
         prompt_variant: str = "evidence_first",
         client: Any | None = None,
+        api_key: str | None = None,
     ) -> None:
         if prompt_variant not in PROMPT_VARIANTS:
             raise ValueError(f"unknown prompt variant: {prompt_variant}")
         if client is None:
+            api_key = api_key or os.environ.get("GEMINI_API_KEY")
+            if not api_key:
+                api_key = getpass.getpass("Gemini API key: ")
+            if not api_key:
+                raise RuntimeError("Gemini API key is required for generation")
             from google import genai
 
-            client = genai.Client()
+            client = genai.Client(api_key=api_key)
         self.client = client
         self.model = model
         self.prompt_variant = prompt_variant

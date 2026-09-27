@@ -1,4 +1,5 @@
 import argparse
+import getpass
 import json
 import math
 import os
@@ -109,11 +110,14 @@ def run_offline_comparison(cases: list[dict[str, Any]], retriever: Any | None = 
 
 
 def run_prompt_comparison(cases: list[dict[str, Any]], model_name: str, retriever: Any | None = None) -> dict[str, Any]:
-    if not os.environ.get("GEMINI_API_KEY"):
-        raise RuntimeError("GEMINI_API_KEY is required for live prompt comparison")
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        api_key = getpass.getpass("Gemini API key: ")
+    if not api_key:
+        raise RuntimeError("Gemini API key is required for live prompt comparison")
     results = {}
     for variant in PROMPT_VARIANTS:
-        model = GeminiModel(model=model_name, prompt_variant=variant)
+        model = GeminiModel(model=model_name, prompt_variant=variant, api_key=api_key)
         results[variant] = evaluate_agent(BankingAgent(model=model, retriever=retriever), cases)
     return {
         "model": model_name,
