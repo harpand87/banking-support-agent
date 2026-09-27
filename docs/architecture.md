@@ -22,7 +22,7 @@ The model is untrusted. User input, retrieved text, tool results, and feedback a
 
 ## Integration points
 
-- Chat generation: optional OpenAI-compatible implementation in `app/llm.py`; deterministic safety gates remain outside the provider.
+- Chat generation: optional Gemini implementation in `app/llm.py`; deterministic safety gates remain outside the provider.
 - Retrieval: versioned JSONL is canonical. `search()` provides the offline keyword baseline; `ChromaSemanticRetriever` uses OpenAI embeddings and a persistent cosine-distance Chroma index.
 - Tool gateway: allowlisted read-only search/routing, support journey planning, and bounded synthetic FD/RD calculators in `app/tools.py`.
 - Planning and memory: fixed checklists are presented stepwise; process-local session memory rejects detected PII, retains only generic topic/workflow state, and reset clears both workflow and feedback state.

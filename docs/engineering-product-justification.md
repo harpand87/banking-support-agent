@@ -1,6 +1,6 @@
 # Engineering and Product Justification
 
-A Python-first CLI keeps the capstone reproducible and makes safety behavior easy to test. The provider-neutral model interface has both a deterministic offline implementation and an optional OpenAI-compatible chat adapter. Three prompts are run against the same fixed evaluation cases. Safety decisions remain deterministic and independent of provider output.
+A Python-first CLI keeps the capstone reproducible and makes safety behavior easy to test. The provider-neutral model interface has both a deterministic offline implementation and an optional Gemini chat adapter. Three prompts are run against the same fixed evaluation cases. Safety decisions remain deterministic and independent of provider output.
 
 The canonical knowledge source is validated JSONL; the offline keyword search preserves deterministic operation. For actual semantic retrieval, OpenAI embeddings are indexed and queried in Chroma with cosine distance and a relevance threshold. This optional online integration is isolated behind a retriever interface, so tests can inject a fake embedding provider and the baseline can run without network access.
 

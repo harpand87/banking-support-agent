@@ -13,7 +13,7 @@ python -m pip install -r requirements.txt
 python -m pytest
 ```
 
-`requirements.txt` installs the project and the optional OpenAI, ChromaDB, FastAPI, Uvicorn, and pytest dependencies. For smaller installations, use `python -m pip install -e '.[dev]'` for offline development, `.[llm]` for OpenAI generation, or `.[retrieval]` for semantic retrieval.
+`requirements.txt` installs the project and the optional Gemini, OpenAI, ChromaDB, FastAPI, Uvicorn, and pytest dependencies. For smaller installations, use `python -m pip install -e '.[dev]'` for offline development, `.[llm]` for Gemini generation, or `.[retrieval]` for semantic retrieval.
 
 ## Run
 
@@ -33,10 +33,10 @@ print(agent.handle("How do I open a savings account?", "demo").answer)
 print(agent.handle("What is next?", "demo").answer)
 ```
 
-The offline mode does not need credentials. Live generation and vector retrieval use `OPENAI_API_KEY` from the environment; never put credentials in source files or evidence.
+The offline mode does not need credentials. Live generation uses `GEMINI_API_KEY`; semantic vector retrieval uses `OPENAI_API_KEY`. Set credentials in the environment and never put them in source files or evidence.
 
 ```bash
-python -m app.cli --provider openai --prompt-variant evidence_first "What is the monthly fee for the Everyday Account?"
+python -m app.cli --provider gemini --prompt-variant evidence_first "What is the monthly fee for the Everyday Account?"
 python -m app.cli --retrieval semantic "What is the monthly fee for the Everyday Account?"
 ```
 
@@ -62,7 +62,7 @@ python -m app.evaluate --live-prompts
 python -m app.evaluate --semantic --live-prompts
 ```
 
-The default evaluator runs the same JSONL cases with and without retrieval and writes aggregate/case-ID evidence to `evidence/evaluation_offline.json`. `--live-prompts` runs the identical fixed set through all three OpenAI prompt variants; it requires credentials and makes provider calls. The optional `--semantic` path evaluates OpenAI embeddings and Chroma. See [the evaluation report](docs/evaluation-report.md) and [data specifications](docs/data-specification.md).
+The default evaluator runs the same JSONL cases with and without retrieval and writes aggregate/case-ID evidence to `evidence/evaluation_offline.json`. `--live-prompts` runs the identical fixed set through all three Gemini prompt variants and requires `GEMINI_API_KEY`. The optional `--semantic` path evaluates OpenAI embeddings and Chroma and requires `OPENAI_API_KEY`. See [the evaluation report](docs/evaluation-report.md) and [data specifications](docs/data-specification.md).
 
 ## Safety and Data Handling
 

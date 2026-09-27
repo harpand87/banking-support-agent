@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from app.llm import OpenAIModel, PROMPT_VARIANTS
+from app.llm import GeminiModel, PROMPT_VARIANTS
 from app.knowledge import ChromaSemanticRetriever, OpenAIEmbeddingProvider
 from app.orchestrator import BankingAgent
 
@@ -109,11 +109,11 @@ def run_offline_comparison(cases: list[dict[str, Any]], retriever: Any | None = 
 
 
 def run_prompt_comparison(cases: list[dict[str, Any]], model_name: str, retriever: Any | None = None) -> dict[str, Any]:
-    if not os.environ.get("OPENAI_API_KEY"):
-        raise RuntimeError("OPENAI_API_KEY is required for live prompt comparison")
+    if not os.environ.get("GEMINI_API_KEY"):
+        raise RuntimeError("GEMINI_API_KEY is required for live prompt comparison")
     results = {}
     for variant in PROMPT_VARIANTS:
-        model = OpenAIModel(model=model_name, prompt_variant=variant)
+        model = GeminiModel(model=model_name, prompt_variant=variant)
         results[variant] = evaluate_agent(BankingAgent(model=model, retriever=retriever), cases)
     return {
         "model": model_name,
@@ -126,9 +126,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run fixed-set banking agent evaluations")
     parser.add_argument("--cases", type=Path, default=DEFAULT_CASES)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
-    parser.add_argument("--live-prompts", action="store_true", help="call the configured OpenAI model for all three prompts")
+    parser.add_argument("--live-prompts", action="store_true", help="call the configured Gemini model for all three prompts")
     parser.add_argument("--semantic", action="store_true", help="use OpenAI embeddings and Chroma for the RAG run")
-    parser.add_argument("--model", default="gpt-4o-mini")
+    parser.add_argument("--model", default="gemini-2.5-flash")
     args = parser.parse_args()
 
     cases = load_cases(args.cases)

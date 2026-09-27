@@ -25,36 +25,33 @@ PROMPT_VARIANTS = {
 }
 
 
-class OpenAIModel:
-    """OpenAI-compatible chat model; deterministic safety gates remain outside the model."""
+class GeminiModel:
+    """Gemini chat model; deterministic safety gates remain outside the provider."""
 
     def __init__(
         self,
-        model: str = "gpt-4o-mini",
+        model: str = "gemini-2.5-flash",
         prompt_variant: str = "evidence_first",
         client: Any | None = None,
     ) -> None:
         if prompt_variant not in PROMPT_VARIANTS:
             raise ValueError(f"unknown prompt variant: {prompt_variant}")
         if client is None:
-            from openai import OpenAI
+            from google import genai
 
-            client = OpenAI()
+            client = genai.Client()
         self.client = client
         self.model = model
         self.prompt_variant = prompt_variant
 
     def answer(self, question: str, evidence: list[str], style: str = "balanced") -> str:
         evidence_text = "\n".join(f"- {item}" for item in evidence) or "(no approved evidence)"
-        response = self.client.chat.completions.create(
+        response = self.client.models.generate_content(
             model=self.model,
-            temperature=0,
-            messages=[
-                {"role": "system", "content": PROMPT_VARIANTS[self.prompt_variant]},
-                {"role": "user", "content": f"Requested response style: {style}\nApproved evidence:\n{evidence_text}\n\nQuestion: {question}"},
-            ],
+            contents=f"Requested response style: {style}\nApproved evidence:\n{evidence_text}\n\nQuestion: {question}",
+            config={"system_instruction": PROMPT_VARIANTS[self.prompt_variant], "temperature": 0},
         )
-        content = response.choices[0].message.content
+        content = response.text
         if not isinstance(content, str) or not content.strip():
             raise RuntimeError("provider returned an empty response")
         return content.strip()
