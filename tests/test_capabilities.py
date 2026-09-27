@@ -1,6 +1,8 @@
 import json
+import getpass
+import sys
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
@@ -136,6 +138,41 @@ def test_gemini_adapter_runs_each_prompt_variant_with_grounding_context():
     assert len({request["config"]["system_instruction"] for request in client.requests}) == 3
     assert all("Approved source KB-001" in request["contents"] for request in client.requests)
     assert all(request["config"]["temperature"] == 0 for request in client.requests)
+
+
+def test_gemini_adapter_passes_environment_api_key(monkeypatch):
+    created_clients = []
+    gemini_client = FakeGemini()
+    fake_google = ModuleType("google")
+    fake_google.genai = SimpleNamespace(
+        Client=lambda **options: (created_clients.append(options) or gemini_client),
+    )
+    monkeypatch.setitem(sys.modules, "google", fake_google)
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+
+    model = GeminiModel()
+
+    assert model.client is gemini_client
+    assert created_clients == [{"api_key": "test-gemini-key"}]
+
+
+def test_gemini_adapter_prompts_for_api_key_when_environment_is_unset(monkeypatch):
+    created_clients = []
+    prompts = []
+    gemini_client = FakeGemini()
+    fake_google = ModuleType("google")
+    fake_google.genai = SimpleNamespace(
+        Client=lambda **options: (created_clients.append(options) or gemini_client),
+    )
+    monkeypatch.setitem(sys.modules, "google", fake_google)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.setattr(getpass, "getpass", lambda prompt: (prompts.append(prompt) or "test-gemini-key"))
+
+    model = GeminiModel()
+
+    assert model.client is gemini_client
+    assert prompts == ["Gemini API key: "]
+    assert created_clients == [{"api_key": "test-gemini-key"}]
 
 
 def test_safety_blocks_live_private_actions_and_personalized_advice():
