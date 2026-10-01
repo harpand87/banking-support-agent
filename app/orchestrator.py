@@ -131,13 +131,27 @@ class BankingAgent:
         sources = [item.source for item in items]
         evidence = [f"[{item.source}] {item.text}" for item in items]
         calls, followup_prompt = self._tool_calls(request.text) if self.tools_enabled else ([], None)
+        planner_events = []
+        tool_selector = getattr(self.model, "select_tools", None)
+        if self.tools_enabled and callable(tool_selector) and not followup_prompt:
+            try:
+                proposed_calls = tool_selector(request.text, max_calls=self.tool_executor.max_calls)
+                if not isinstance(proposed_calls, list) or not all(isinstance(call, ToolCall) for call in proposed_calls):
+                    raise ValueError("tool selector returned an invalid plan")
+                calls = proposed_calls
+            except Exception:
+                planner_events.append({
+                    "tool": "model_tool_selector",
+                    "status": "failed",
+                    "error": "selection unavailable; deterministic routing used",
+                })
         if self.retriever is not None:
             calls = [
                 ToolCall(call.name, {**call.arguments, "retriever": self.retriever})
                 if call.name == "search_product_policy" else call
                 for call in calls
             ]
-        tool_events = self.tool_executor.run(calls)
+        tool_events = planner_events + self.tool_executor.run(calls)
         tool_results = [event.get("result") for event in tool_events if event.get("status") == "success"]
         if tool_results:
             for result in tool_results:

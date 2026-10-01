@@ -1,0 +1,25 @@
+{
+  "execution": "uvicorn on 127.0.0.1:8000; urllib HTTP client",
+  "mode": "offline_demo",
+  "health": {
+    "method": "GET",
+    "path": "/health",
+    "status_code": 200,
+    "body_status": "ok"
+  },
+  "answer": {
+    "method": "POST",
+    "path": "/v1/answer",
+    "status_code": 200,
+    "decision": "answer",
+    "sources": ["KB-001"],
+    "trace_id_present": true,
+    "round_trip_latency_ms": 1.087,
+    "sample_count": 1
+  },
+  "invalid_extra_field": {
+    "status_code": 422,
+    "handled_as_validation_error": true
+  },
+  "scope": "Local HTTP smoke test only; unauthenticated and not production deployment"
+}

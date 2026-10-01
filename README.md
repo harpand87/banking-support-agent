@@ -1,6 +1,6 @@
 # AI Banking Support and Advisory Agent
 
-Scenario-2 capstone: a safety-first, non-transactional support agent for synthetic banking products. The deterministic offline implementation is the default; live generation and semantic vector retrieval are optional integrations.
+Scenario-2 capstone, Track B — Framework-Free: a safety-first, non-transactional support agent for synthetic banking products. The deterministic offline implementation is the default; Gemini generation is optional and Chroma semantic retrieval can run locally with MiniLM.
 
 ## Setup
 
@@ -33,14 +33,14 @@ print(agent.handle("How do I open a savings account?", "demo").answer)
 print(agent.handle("What is next?", "demo").answer)
 ```
 
-The offline mode does not need credentials. Live generation reads `GEMINI_API_KEY` or securely prompts for it when unset; semantic vector retrieval uses `OPENAI_API_KEY`. Never put credentials in source files or evidence.
+The offline mode and local MiniLM semantic retrieval do not need provider credentials. Live generation reads `GEMINI_API_KEY` or securely prompts for it when unset. `--semantic-provider openai` uses `OPENAI_API_KEY`. Never put credentials in source files or evidence.
 
 ```bash
 python -m app.cli --provider gemini --prompt-variant evidence_first "What is the monthly fee for the Everyday Account?"
-python -m app.cli --retrieval semantic "What is the monthly fee for the Everyday Account?"
+python -m app.cli --retrieval semantic --semantic-provider minilm "What is the monthly fee for the Everyday Account?"
 ```
 
-Prompt variants are `minimal`, `safety_contract`, and `evidence_first`. Semantic retrieval uses OpenAI embeddings with a persistent Chroma vector collection under `chroma_db/`.
+Prompt variants are `minimal`, `safety_contract`, and `evidence_first`. Gemini can propose structured allowlisted tool calls; invalid proposals are blocked, and failed planning falls back to deterministic routing. Chroma vector collections persist under ignored `chroma_db/`; local `all-MiniLM-L6-v2` is the default embedding model.
 
 ## Local API
 
@@ -52,17 +52,18 @@ Install the full requirements, then run `banking-api` or `python -m uvicorn app.
 - Illustrative FD and RD rates and maturity calculators. Rates and results are synthetic examples, not live offers.
 - Safe routing for live balance requests, fraud, and private account actions.
 - General investment education. The agent does not select funds or provide individualized financial advice.
-- Bounded tool execution, source citations, short-lived workflow memory, feedback-driven response style, and redacted operational traces.
+- Bounded tool execution with structured model-proposed calls behind the allowlist, argument validation, duplicate guard, and per-request budget; deterministic routing remains the fallback.
+- Source citations, short-lived workflow memory, feedback-driven response style, and redacted operational traces.
 
 ## Evaluation
 
 ```bash
 python -m app.evaluate
+python -m app.evaluate --semantic --semantic-provider minilm --output evidence/evaluation_semantic.json
 python -m app.evaluate --live-prompts
-python -m app.evaluate --semantic --live-prompts
 ```
 
-The default evaluator runs the same JSONL cases with and without retrieval and writes aggregate/case-ID evidence to `evidence/evaluation_offline.json`. `--live-prompts` runs the identical fixed set through all three Gemini prompt variants and securely prompts for a key if `GEMINI_API_KEY` is unset. The optional `--semantic` path evaluates OpenAI embeddings and Chroma and requires `OPENAI_API_KEY`. See [the evaluation report](docs/evaluation-report.md) and [data specifications](docs/data-specification.md).
+The default evaluator runs the same fixed cases without retrieval and with keyword retrieval, captures two-run consistency, and writes `evidence/evaluation_offline.json` plus `evidence/capability_demos.json`. `--semantic` runs actual MiniLM embeddings and Chroma; use `--semantic-provider openai` to choose OpenAI embeddings. `--live-prompts` calls Gemini for all three prompts on the same cases and requires `GEMINI_API_KEY`. See the [prompt comparison](docs/prompt-comparison.md), [evaluation report](docs/evaluation-report.md), [demo script](docs/demo-script.md), and [data specifications](docs/data-specification.md).
 
 ## Safety and Data Handling
 
@@ -76,7 +77,7 @@ All included product data is synthetic. Verify real rates, eligibility, terms, a
 - `data/knowledge/`: approved synthetic banking corpus in JSONL.
 - `data/products/`: versioned synthetic rate examples in JSON.
 - `data/evaluations/`: fixed, repeatable evaluation cases in JSONL.
-- `docs/`: architecture, data contracts, workflow and engineering documentation.
+- `docs/`: architecture, data contracts, demo script, prompt comparison, evaluation report, and engineering justification.
 - `evidence/`: sanitized evaluation summaries and demonstration artifacts.
 - `tests/`: offline safety, retrieval, tool, workflow, adaptation, and provider-contract tests.
 
