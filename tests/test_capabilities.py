@@ -7,9 +7,10 @@ from types import ModuleType, SimpleNamespace
 import pytest
 
 from app.adaptation import FeedbackProfile
-from app.evaluate import load_cases, run_offline_comparison
-from app.knowledge import ChromaSemanticRetriever, KNOWLEDGE, OpenAIEmbeddingProvider, load_knowledge, search
-from app.llm import GeminiModel, PROMPT_VARIANTS
+from app.demo_evidence import build_capability_evidence
+from app.evaluate import load_cases, run_offline_comparison, run_prompt_comparison
+from app.knowledge import ChromaMiniLMEmbeddingProvider, ChromaSemanticRetriever, KNOWLEDGE, OpenAIEmbeddingProvider, load_knowledge, search
+from app.llm import GeminiModel, OfflineModel, PROMPT_VARIANTS
 from app.memory import SessionMemory
 from app.models import Decision
 from app.orchestrator import BankingAgent
@@ -65,6 +66,17 @@ class FakeGemini:
         return SimpleNamespace(text="Grounded response.")
 
 
+class FakeToolPlanner:
+    def __init__(self, text):
+        self.requests = []
+        self.text = text
+        self.models = SimpleNamespace(generate_content=self.generate_content)
+
+    def generate_content(self, **request):
+        self.requests.append(request)
+        return SimpleNamespace(text=self.text)
+
+
 class FakeEmbeddingClient:
     def __init__(self):
         self.requests = []
@@ -114,6 +126,13 @@ def test_openai_embedding_adapter_uses_configured_model():
     assert client.requests[0]["model"] == "test-embedding-model"
 
 
+def test_local_minilm_adapter_returns_plain_float_vectors():
+    provider = ChromaMiniLMEmbeddingProvider(
+        embedding_function=lambda texts: [[float(len(text)), 1.0] for text in texts],
+    )
+    assert provider.embed(["one", "three"]) == [[3.0, 1.0], [5.0, 1.0]]
+
+
 def test_chroma_vector_store_persists_and_filters_weak_matches(tmp_path):
     chromadb = pytest.importorskip("chromadb")
 
@@ -138,6 +157,54 @@ def test_gemini_adapter_runs_each_prompt_variant_with_grounding_context():
     assert len({request["config"]["system_instruction"] for request in client.requests}) == 3
     assert all("Approved source KB-001" in request["contents"] for request in client.requests)
     assert all(request["config"]["temperature"] == 0 for request in client.requests)
+
+
+def test_prompt_comparison_reports_case_deltas_and_final_recommendation(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr("app.evaluate.GeminiModel", lambda **options: OfflineModel())
+    report = run_prompt_comparison(load_cases(), "test-model")
+    assert report["same_case_ids"] == [case["id"] for case in load_cases()]
+    assert set(report["variant_analysis_vs_minimal"]) == set(PROMPT_VARIANTS)
+    assert report["recommended_final_prompt_variant"] == "evidence_first"
+    assert all(
+        "improved_case_ids" in analysis and "regressed_case_ids" in analysis
+        for analysis in report["variant_analysis_vs_minimal"].values()
+    )
+
+
+def test_gemini_tool_planner_parses_bounded_structured_calls():
+    client = FakeToolPlanner(json.dumps({
+        "calls": [{"name": "plan_support_journey", "arguments": {"workflow": "savings_opening"}}],
+    }))
+    calls = GeminiModel(client=client).select_tools("Help me prepare to open an account", max_calls=2)
+    assert [(call.name, call.arguments) for call in calls] == [
+        ("plan_support_journey", {"workflow": "savings_opening"}),
+    ]
+    assert client.requests[0]["config"]["response_mime_type"] == "application/json"
+    assert "Maximum calls: 2" in client.requests[0]["contents"]
+
+
+def test_model_tool_selection_is_allowlisted_and_falls_back_on_failure():
+    invalid_client = FakeToolPlanner(json.dumps({"calls": [{"name": "transfer_money", "arguments": {}}]}))
+    invalid_model = GeminiModel(client=invalid_client)
+    blocked = BankingAgent(model=invalid_model).handle(
+        "What is the monthly fee for the Everyday Account?", "invalid-plan",
+    )
+    assert blocked.decision == Decision.ANSWER
+    assert any(event.get("tool") == "transfer_money" and event.get("status") == "blocked" for event in blocked.tool_events)
+
+    class FailedPlanner(OfflineModel):
+        def select_tools(self, question, max_calls=2):
+            raise RuntimeError("provider details must not be returned")
+
+    fallback = BankingAgent(model=FailedPlanner()).handle(
+        "What is the monthly fee for the Everyday Account?", "failed-plan",
+    )
+    assert fallback.decision == Decision.ANSWER
+    assert fallback.tool_events[0]["tool"] == "model_tool_selector"
+    assert fallback.tool_events[0]["status"] == "failed"
+    assert "provider details" not in str(fallback.tool_events)
+    assert any(event.get("tool") == "search_product_policy" and event.get("status") == "success" for event in fallback.tool_events)
 
 
 def test_gemini_adapter_passes_environment_api_key(monkeypatch):
@@ -259,5 +326,22 @@ def test_provider_failure_escalates_instead_of_claiming_success():
 def test_fixed_set_shows_retrieval_citation_gain():
     cases = load_cases()
     comparison = run_offline_comparison(cases)
-    assert comparison["with_rag"]["citation_coverage"] > comparison["without_rag"]["citation_coverage"]
+    assert comparison["keyword_rag"]["citation_coverage"] > comparison["without_rag"]["citation_coverage"]
     assert comparison["without_rag"]["citation_coverage"] == 0
+    assert comparison["keyword_rag"]["case_count"] == comparison["without_rag"]["case_count"] == len(cases)
+    assert comparison["keyword_rag"]["tool_success_count"] == comparison["without_rag"]["tool_success_count"]
+    assert comparison["keyword_rag"]["repeatability"] == {
+        "runs": 2,
+        "decision_agreement": 1.0,
+        "source_agreement": 1.0,
+        "answer_exact_agreement": 1.0,
+    }
+
+
+def test_capability_evidence_covers_memory_adaptation_safety_and_api():
+    evidence = build_capability_evidence()
+    assert evidence["workflow_memory_and_reset"]["reset_cleared_memory"]
+    assert evidence["feedback_adaptation"]["answer_length_reduced"]
+    assert evidence["failed_tool_handling"]["failed_call_did_not_claim_success"]
+    assert evidence["safety_and_logging"]["pii_absent_from_trace"]
+    assert evidence["local_api"]["status"] in {"passed", "unavailable"}

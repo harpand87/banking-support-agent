@@ -125,6 +125,21 @@ class OpenAIEmbeddingProvider:
         return [list(item.embedding) for item in response.data]
 
 
+class ChromaMiniLMEmbeddingProvider:
+    """Chroma's pretrained all-MiniLM-L6-v2 ONNX embedder for local retrieval."""
+
+    def __init__(self, embedding_function: Any | None = None) -> None:
+        if embedding_function is None:
+            from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
+
+            embedding_function = DefaultEmbeddingFunction()
+        self.embedding_function = embedding_function
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        vectors = self.embedding_function(texts)
+        return [vector.tolist() if hasattr(vector, "tolist") else list(vector) for vector in vectors]
+
+
 class ChromaSemanticRetriever:
     """Persistent Chroma vector retrieval with injected semantic embeddings."""
 
@@ -134,7 +149,7 @@ class ChromaSemanticRetriever:
         embeddings: EmbeddingProvider | None = None,
         persist_directory: str | Path = "chroma_db",
         client: Any | None = None,
-        max_distance: float = 0.45,
+        max_distance: float = 0.65,
     ) -> None:
         if embeddings is None:
             raise ValueError("an embedding provider is required for semantic retrieval")
