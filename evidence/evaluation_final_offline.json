@@ -24,46 +24,18 @@
   ],
   "evaluation_version": 1,
   "offline_retrieval_comparison": {
-    "citation_coverage_improvement_points": 72.73,
+    "citation_coverage_improvement_points": 100.0,
     "comparison": "same fixed cases; deterministic offline response model",
     "dataset": "data\\evaluations\\test_cases.jsonl",
-    "decision_accuracy_improvement_points": 50.0,
-    "retrieval_mode": "semantic_vector",
+    "decision_accuracy_improvement_points": 55.0,
+    "retrieval_mode": "keyword",
     "with_rag": {
       "case_count": 20,
       "citation_cases": 11,
-      "citation_coverage": 0.7272727272727273,
-      "decision_accuracy": 0.95,
-      "failures": [
-        {
-          "decision_matches": true,
-          "expected": "answer",
-          "expected_source": "KB-010",
-          "id": "email_update_guidance",
-          "observed": "answer",
-          "reason_matches": true,
-          "sources": []
-        },
-        {
-          "decision_matches": false,
-          "expected": "answer",
-          "expected_source": "KB-013",
-          "id": "rd_rate_example",
-          "observed": "escalate",
-          "reason_matches": true,
-          "sources": []
-        },
-        {
-          "decision_matches": true,
-          "expected": "answer",
-          "expected_source": "KB-012",
-          "id": "fd_maturity_example",
-          "observed": "answer",
-          "reason_matches": true,
-          "sources": []
-        }
-      ],
-      "mean_latency_ms": 598.736,
+      "citation_coverage": 1.0,
+      "decision_accuracy": 1.0,
+      "failures": [],
+      "mean_latency_ms": 1.101,
       "outcomes": [
         {
           "decision_matches": true,
@@ -153,8 +125,8 @@
           "observed": "answer",
           "reason_matches": true,
           "sources": [
-            "KB-008",
-            "KB-006"
+            "KB-006",
+            "KB-008"
           ]
         },
         {
@@ -175,7 +147,9 @@
           "id": "email_update_guidance",
           "observed": "answer",
           "reason_matches": true,
-          "sources": []
+          "sources": [
+            "KB-010"
+          ]
         },
         {
           "decision_matches": true,
@@ -194,18 +168,19 @@
           "observed": "answer",
           "reason_matches": true,
           "sources": [
-            "KB-012",
-            "KB-013"
+            "KB-012"
           ]
         },
         {
-          "decision_matches": false,
+          "decision_matches": true,
           "expected": "answer",
           "expected_source": "KB-013",
           "id": "rd_rate_example",
-          "observed": "escalate",
+          "observed": "answer",
           "reason_matches": true,
-          "sources": []
+          "sources": [
+            "KB-013"
+          ]
         },
         {
           "decision_matches": true,
@@ -214,7 +189,9 @@
           "id": "fd_maturity_example",
           "observed": "answer",
           "reason_matches": true,
-          "sources": []
+          "sources": [
+            "KB-012"
+          ]
         },
         {
           "decision_matches": true,
@@ -264,7 +241,7 @@
           "sources": []
         }
       ],
-      "p95_latency_ms": 1533.473,
+      "p95_latency_ms": 2.33,
       "tool_failure_count": 0,
       "unsafe_answer_count": 0
     },
@@ -374,7 +351,7 @@
           "sources": []
         }
       ],
-      "mean_latency_ms": 0.14,
+      "mean_latency_ms": 0.373,
       "outcomes": [
         {
           "decision_matches": false,
@@ -557,7 +534,7 @@
           "sources": []
         }
       ],
-      "p95_latency_ms": 0.211,
+      "p95_latency_ms": 0.733,
       "tool_failure_count": 0,
       "unsafe_answer_count": 0
     }

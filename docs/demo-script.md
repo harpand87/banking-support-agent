@@ -1,6 +1,6 @@
 # Scenario-2 Demo Script
 
-Run commands from the project root in the Python 3.11+ environment. The default agent is deterministic and offline; sample rates are synthetic. Responses include decisions, citations, tool events, and trace IDs.
+Run commands from the project root. The default agent is deterministic and offline; sample rates are synthetic. Responses include decisions, citations, tool events, and trace IDs.
 
 1. **Grounded support**: `python3 -m app.cli 'What is the monthly fee for the Everyday Account?'`
    Expected: `answer`, source `KB-001`, successful policy tool event.
@@ -17,8 +17,8 @@ Run commands from the project root in the Python 3.11+ environment. The default 
 5. **Legal advice refusal**: `python3 -m app.cli 'Can I sue the bank?'`
    Expected: `refuse`; legal referral only.
 
-6. **Multi-step plan, memory, reset**: run `python3 -c 'from app.orchestrator import BankingAgent; a=BankingAgent(); print(a.handle("How do I open a savings account?", "demo").answer); print(a.handle("What is next?", "demo").answer); print(a.handle("I completed that step; what next?", "demo").answer); a.reset_session("demo"); print(a.handle("What is next?", "demo").decision.value)'`.
-   Expected: plan creation, step progression after completion, and a safe ambiguous follow-up after reset. The same demonstration is persisted in `evidence/capability_demos.json`.
+6. **Account-opening plan**: in one Python process, call `agent.handle('How do I open a savings account?', 'onboarding')` and then `agent.handle('What is next?', 'onboarding')` on the same `BankingAgent` instance.
+   Expected: approved checklist guidance and a stepwise follow-up. The CLI starts a new process per invocation, so its session state does not persist across separate commands.
 
 7. **KYC/contact guidance**: `python3 -m app.cli 'What is the KYC process for opening an account?'` and `python3 -m app.cli 'How do I change my email address?'`
    Expected: direct the user to authenticated official channels; no documents or customer records are handled.
@@ -32,11 +32,8 @@ Run commands from the project root in the Python 3.11+ environment. The default 
 10. **Tool failure and limits**: run `python3 -m pytest tests/test_capabilities.py -q`
     Expected: invalid tool arguments, duplicate calls, unapproved tools, and excess tool calls are recorded as failed or blocked.
 
-11. **Three-way retrieval and RCA**: `python3 -m app.evaluate --semantic --semantic-provider minilm --output evidence/evaluation_semantic.json`.
-   Expected: identical no-RAG, keyword, and real MiniLM+Chroma lanes. `evaluation_semantic_before_threshold_fix.json` demonstrates the original cutoff regression; `evaluation_semantic.json` records the corrected 0.65 cutoff. OpenAI embeddings are optional with `--semantic-provider openai` and `OPENAI_API_KEY`.
+11. **RAG comparison**: `python3 -m app.evaluate`
+      Expected: `evidence/evaluation_offline.json` compares all fixed cases with and without retrieval. Live OpenAI prompt comparison (`python3 -m app.evaluate --live-prompts`) securely prompts for a OpenAI key if `OPENAI_API_KEY` is unset; semantic vector retrieval (`--semantic`) requires `OPENAI_API_KEY`.
 
-12. **Prompt comparison**: set `GEMINI_API_KEY` in the shell, then run `python3 -m app.evaluate --live-prompts --output evidence/evaluation_live_prompts.json`.
-   Expected: identical fixed case IDs for all prompt variants, sanitized outputs, metric deltas, regressions, and a metric-based final recommendation. Fake-client tests are not live model evidence.
-
-13. **Local API smoke test**: run `banking-api`, then call `GET http://127.0.0.1:8000/health` and `POST /v1/answer` with `{"text":"What is the monthly fee for the Everyday Account?"}`.
+12. **Local API smoke test**: run `banking-api`, then call `GET http://127.0.0.1:8000/health` and `POST /v1/answer` with `{"text":"What is the monthly fee for the Everyday Account?"}`.
    Expected: health status `ok`, then a grounded answer citing `KB-001`. Keep this demo bound to localhost; it is unauthenticated and not for customer data.

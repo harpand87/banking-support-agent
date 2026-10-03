@@ -1,16 +1,12 @@
 # Engineering and Product Justification
 
-## Track B — Framework-Free
+A Python-first CLI keeps the capstone reproducible and makes safety behavior easy to test. The provider-neutral model interface has both a deterministic offline implementation and an optional OpenAI Responses API adapter. Three prompts are run against the same fixed evaluation cases. Safety decisions remain deterministic and independent of provider output.
 
-This capstone selects **Track B — Framework-Free**. It uses plain Python protocols and explicit modules instead of a general-purpose agent framework. The central decision path is small enough to audit: deterministic safety gates, approved-data retrieval, structured model tool proposals, an allowlisted tool executor, answer generation, and a deterministic post-generation safety check. This minimizes hidden orchestration behavior and keeps the non-transactional boundary enforceable in ordinary code. Gemini and Chroma are provider/storage libraries, not agent frameworks.
+The canonical knowledge source is validated JSONL; the offline keyword search preserves deterministic operation. For actual semantic retrieval, OpenAI embeddings are indexed and queried in Chroma with cosine distance and a relevance threshold. This optional online integration is isolated behind a retriever interface, so tests can inject a fake embedding provider and the baseline can run without network access.
 
-A Python-first CLI and FastAPI demo keep the project reproducible and straightforward to test. The provider-neutral model interface has a deterministic offline implementation and an optional Gemini adapter. Three prompt variants run against the same fixed cases when Gemini credentials are available. Safety decisions remain deterministic and independent of provider output.
+The design deliberately uses bounded logical roles under one orchestrator instead of open-ended autonomous agents. A small workflow planner emits fixed, non-executing checklists; tool calls use an allowlist, argument validation, duplicate suppression, and a per-request budget. FD/RD calculations are deterministic examples from separately versioned synthetic data. Session memory is bounded and process-local, and feedback changes only response style while storing aggregate counts rather than free-text reasons.
 
-The canonical knowledge source is validated JSONL. Offline keyword retrieval is the baseline; actual local semantic retrieval uses pretrained `all-MiniLM-L6-v2` embeddings with Chroma cosine distance and a measured relevance threshold. OpenAI embeddings remain an optional alternative. The retriever interface keeps providers swappable and tests can inject deterministic embeddings.
-
-The design uses bounded logical roles under one orchestrator instead of open-ended autonomous agents. Gemini can propose structured tool calls from a constrained catalog; the allowlist, argument validation, duplicate suppression, and per-request budget remain authoritative. If planning fails, deterministic routing is used. The workflow planner produces non-executing checklists that advance across turns and reset explicitly. FD/RD calculations are deterministic examples from separately versioned synthetic data. Session memory is bounded and process-local; feedback changes response style while storing aggregate counts, never free-text reasons.
-
-The evaluator compares the same 20 cases without retrieval, with keyword retrieval, and with actual local semantic retrieval. It records case outputs, expected-source coverage, consistency across two runs, safety, tool outcomes, and latency. The capability evidence collector covers workflow memory/reset, feedback adaptation, injected tool failure, redacted tracing, and local API behavior. The Gemini runner captures all prompt outputs and case-level deltas. Live provider runs require credentials; the offline report is not presented as Gemini quality evidence.
+The offline evaluator compares the same fixed set with retrieval/tools enabled and disabled, and records citations, decision accuracy, safety failures, tool failures, and latency. A separate option calls all three provider prompts over the same cases. Live runs require credentials and must capture model/date/cost metadata; the offline report must not be presented as semantic-search or LLM-quality evidence.
 
 Deferred from the MVP: authentication, real banking APIs, account lookup, money movement, application approvals, personalized legal/tax advice, production cloud scaling, and long-term storage of customer conversations.
 
@@ -18,4 +14,4 @@ Also deferred: official jurisdiction-specific source verification, a live KYC pr
 
 ## Acknowledgement
 
-Credit to Anoop for the initial draft and the functional requirements supplied for this project. Those requirements informed the baseline, banking workflow, scope boundaries, and Scenario-2 epics.
+Credit to Anoop for the initial draft and functional requirements, and to Sridhar K. and Mukunthan for the V2 capstone implementation and extensions documented here. Those requirements informed the baseline, banking workflow, scope boundaries, and Scenario-2 epics.
