@@ -1,7 +1,14 @@
-# Evidence
+# Evidence Package
 
-Run `python -m app.evaluate` to generate `evaluation_offline.json` and `capability_demos.json`. Run `python -m app.evaluate --semantic --semantic-provider minilm --output evidence/evaluation_semantic.json` for the three-way no-RAG/keyword/semantic comparison. `evaluation_semantic_before_threshold_fix.json` preserves the measured 0.45 cutoff regression for before/root-cause/fix/after evidence. Reports contain fixed case IDs, PII-redacted answers, decisions, source IDs, tool statuses, latency, and consistency; they omit inputs and credentials.
+This directory contains sanitized capstone evidence generated without provider credentials.
 
-Store only sanitized screenshots, JSON outputs, comparison tables, evaluation results, and logs here. Do not store raw user text containing PII, credentials, account identifiers, or provider secrets. Live Gemini outputs are not yet available because this workspace has no configured key; when run, preserve model, date, prompt variant, and cost without persisting secrets or customer content.
+- `evaluation_offline.json` — current fixed 20-case deterministic evaluation.
+- `capstone_evidence_offline.json` — forced demo, planning/memory, adaptation, tool failure, safety, and offline evaluation evidence.
+- `capstone_evidence_offline.md` — human-readable summary of the same evidence.
+- `prompt-comparison-template.md` — mandatory Prompt → Output → What Improved/Worsened template for the live OpenAI run.
 
-`api_http_smoke.json` contains the sanitized localhost Uvicorn HTTP result. Prompt comparison protocol and the provisional selection are documented in `../docs/prompt-comparison.md`; actual Gemini outputs still require a configured key.
+Live provider evidence is intentionally not fabricated. After a credentialed run, add the generated live JSON/Markdown artifacts here after checking that no API key, PII, or customer data is present.
+
+## Provider failure evidence
+
+If a live provider call fails, the user-facing response remains a safe escalation. The orchestrator records only a sanitized error type/message in structured logs so the failure can be used for RCA without placing credentials or raw customer input into evidence.

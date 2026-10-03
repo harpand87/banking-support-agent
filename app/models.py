@@ -39,6 +39,7 @@ class AgentResponse:
     sources: list[str] = field(default_factory=list)
     escalation_reason: str | None = None
     tool_events: list[dict[str, Any]] = field(default_factory=list)
+    plan: list[dict[str, str]] = field(default_factory=list)
     trace_id: str = ""
 
     def as_dict(self) -> dict[str, Any]:
@@ -50,5 +51,6 @@ class AgentResponse:
             "sources": self.sources,
             "escalation_reason": self.escalation_reason,
             "tool_events": self.tool_events,
+            "plan": self.plan,
             "trace_id": self.trace_id,
         }

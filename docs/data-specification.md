@@ -18,7 +18,7 @@ Path: `data/knowledge/approved_knowledge.jsonl`. Each record has this exact sche
 | `jurisdiction` | string | Scope label; `*-example-only` marks illustrative coverage. |
 | `synthetic` | boolean | Must be `true`; the loader rejects other records. |
 
-`app.knowledge.load_knowledge()` validates JSON parsing, exact fields, non-empty strings/topics, unique IDs, approved status, synthetic status, jurisdiction, and date order. It converts `topics` to an immutable tuple and ISO date strings to `datetime.date`. Invalid or empty corpora fail closed with a line-specific error. `search()` is the deterministic keyword baseline. `ChromaSemanticRetriever` embeds documents and queries, indexes them in a persistent cosine-distance Chroma collection, and filters weak matches using `max_distance`. Local MiniLM uses `all-MiniLM-L6-v2` with the measured 0.65 cutoff; OpenAI is an optional provider.
+`app.knowledge.load_knowledge()` validates JSON parsing, exact fields, non-empty strings/topics, unique IDs, approved status, synthetic status, jurisdiction, and date order. It converts `topics` to an immutable tuple and ISO date strings to `datetime.date`. Invalid or empty corpora fail closed with a line-specific error. `search()` is the deterministic offline keyword baseline. `ChromaSemanticRetriever` embeds documents and queries, indexes them in a persistent cosine-distance Chroma collection, and filters weak matches using `max_distance`.
 
 ## Illustrative Deposit Rates JSON
 
@@ -30,7 +30,7 @@ Calculator inputs can override the sample rate. FD uses compound interest, $A=P(
 
 Path: `data/evaluations/test_cases.jsonl`. Required fields are `id` (unique string), `input` (test question), and `expected` (`answer`, `refuse`, or `escalate`). Optional `source` names the expected approved citation; optional `reason` names the expected refusal/escalation reason. The loader in `app.evaluate.load_cases()` validates each record before execution. Use the same case IDs and file for every prompt variant; do not edit cases between compared runs.
 
-The evaluator transforms responses into aggregate decision accuracy, expected-source coverage, unsafe-answer count, provider and tool failures, mean/p95 latency, two-run consistency, and case-ID-level sanitized answers/tool events. Input strings are omitted and answer text is passed through PII redaction. Run `python -m app.evaluate` to regenerate `evidence/evaluation_offline.json` and `evidence/capability_demos.json`; add `--semantic --semantic-provider minilm` for actual local vector evaluation. `--semantic-max-distance` supports controlled cutoff comparisons.
+The evaluator transforms responses into aggregate decision accuracy, expected-source coverage, unsafe-answer count, tool failures, mean/p95 latency, and case-ID-level outcomes. It omits response text and input strings from the report. Run `python -m app.evaluate` to regenerate `evidence/evaluation_offline.json`.
 
 ## Transformations and Maintenance
 

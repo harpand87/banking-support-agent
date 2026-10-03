@@ -46,4 +46,4 @@ The sample covers savings (SB), current-account, and PPF opening guidance; KYC c
 
 ## Acknowledgement
 
-Credit to Anoop for the initial draft and the functional requirements supplied for this capstone. Those requirements shaped the retail-banking persona, original non-transactional baseline, and Scenario-2 epics implemented here.
+Credit to Anoop for the initial draft and functional requirements, and to Sridhar K. and Mukunthan for the V2 capstone implementation and extensions documented here. Those requirements shaped the retail-banking persona, original non-transactional baseline, and Scenario-2 epics implemented here.

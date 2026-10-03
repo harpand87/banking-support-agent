@@ -8,6 +8,7 @@ from app.llm import OfflineModel, TextModel
 from app.memory import SessionMemory
 from app.models import AgentResponse, Decision, RiskLevel, UserRequest
 from app.observability import AuditLogger
+from app.planning import build_execution_plan
 from app.products import load_deposit_rates
 from app.safety import assess, contains_unsafe_commitment, escalation, refusal
 from app.tools import ToolCall, ToolExecutor
@@ -101,19 +102,21 @@ class BankingAgent:
         trace_id = self.audit.trace_id()
         started = time.perf_counter()
         if not request.text.strip():
-            response = AgentResponse("Please ask a banking support question.", Decision.ESCALATE, assess("help me").risk, "empty", trace_id=trace_id)
+            response = AgentResponse("Please ask a banking support question.", Decision.ESCALATE, assess("help me").risk, "empty", plan=[step.as_dict() for step in build_execution_plan(request.text, assess("help me"))], trace_id=trace_id)
             self.audit.event(trace_id, "intake", "empty", started)
             return response
 
         assessment = assess(request.text)
+        execution_plan = build_execution_plan(request.text, assessment)
         self.audit.event(trace_id, "safety_precheck", assessment.decision.value, started, risk=assessment.risk.value, intent=assessment.intent)
+        self.audit.event(trace_id, "plan", "created", started, steps="|".join(step.name for step in execution_plan))
         if assessment.decision == Decision.REFUSE:
-            response = AgentResponse(refusal(assessment), Decision.REFUSE, assessment.risk, assessment.intent, escalation_reason=assessment.reason, trace_id=trace_id)
+            response = AgentResponse(refusal(assessment), Decision.REFUSE, assessment.risk, assessment.intent, escalation_reason=assessment.reason, plan=[step.as_dict() for step in execution_plan], trace_id=trace_id)
             self.audit.event(trace_id, "response_gate", "refused", started, reason=assessment.reason)
             return response
         if assessment.decision == Decision.ESCALATE:
             tool_events = self.tool_executor.run([ToolCall("find_support_route", {"topic": "fraud"})]) if assessment.reason == "suspected_fraud" else []
-            response = AgentResponse(escalation(assessment), Decision.ESCALATE, assessment.risk, assessment.intent, escalation_reason=assessment.reason, tool_events=tool_events, trace_id=trace_id)
+            response = AgentResponse(escalation(assessment), Decision.ESCALATE, assessment.risk, assessment.intent, escalation_reason=assessment.reason, tool_events=tool_events, plan=[step.as_dict() for step in execution_plan], trace_id=trace_id)
             self.audit.event(trace_id, "response_gate", "escalated", started, reason=assessment.reason)
             return response
 
@@ -123,7 +126,7 @@ class BankingAgent:
             advance = bool(re.search(r"\b(done|completed|finished)\b", request.text, re.I))
             next_step = session.next_workflow_step(advance=advance)
             answer = next_step or "That checklist is complete. Continue only through the bank's authenticated channel."
-            response = AgentResponse(answer, Decision.ANSWER, assessment.risk, "workflow_followup", trace_id=trace_id)
+            response = AgentResponse(answer, Decision.ANSWER, assessment.risk, "workflow_followup", plan=[step.as_dict() for step in execution_plan], trace_id=trace_id)
             self.audit.event(trace_id, "response", "answer", started, workflow_followup=True)
             return response
 
@@ -131,27 +134,17 @@ class BankingAgent:
         sources = [item.source for item in items]
         evidence = [f"[{item.source}] {item.text}" for item in items]
         calls, followup_prompt = self._tool_calls(request.text) if self.tools_enabled else ([], None)
-        planner_events = []
-        tool_selector = getattr(self.model, "select_tools", None)
-        if self.tools_enabled and callable(tool_selector) and not followup_prompt:
-            try:
-                proposed_calls = tool_selector(request.text, max_calls=self.tool_executor.max_calls)
-                if not isinstance(proposed_calls, list) or not all(isinstance(call, ToolCall) for call in proposed_calls):
-                    raise ValueError("tool selector returned an invalid plan")
-                calls = proposed_calls
-            except Exception:
-                planner_events.append({
-                    "tool": "model_tool_selector",
-                    "status": "failed",
-                    "error": "selection unavailable; deterministic routing used",
-                })
         if self.retriever is not None:
             calls = [
                 ToolCall(call.name, {**call.arguments, "retriever": self.retriever})
                 if call.name == "search_product_policy" else call
                 for call in calls
             ]
-        tool_events = planner_events + self.tool_executor.run(calls)
+        if calls:
+            self.audit.event(trace_id, "tool_selection", "selected", started, tools=",".join(call.name for call in calls))
+        else:
+            self.audit.event(trace_id, "tool_selection", "none", started)
+        tool_events = self.tool_executor.run(calls)
         tool_results = [event.get("result") for event in tool_events if event.get("status") == "success"]
         if tool_results:
             for result in tool_results:
@@ -168,17 +161,30 @@ class BankingAgent:
         evidence = list(dict.fromkeys(evidence))
         try:
             answer = self.model.answer(request.text, evidence, profile.style)
-        except Exception:
+        except Exception as error:
+            # Keep the customer-facing response generic, but retain a sanitized
+            # provider error type/message in redacted operational logs for RCA.
+            safe_error = re.sub(r"(?i)OPENAI_API_KEY\s*[:=]\s*\S+", r"OPENAI_API_KEY=[REDACTED]", str(error))
+            safe_error = re.sub(r"(?i)AIza[0-9A-Za-z_-]{20,}", "[REDACTED_PROVIDER_KEY]", safe_error)
             answer = "I could not complete this response safely because the language-model provider was unavailable. Please retry or use the bank's official channel."
-            response = AgentResponse(answer, Decision.ESCALATE, RiskLevel.MEDIUM, "provider_unavailable", sources=sources, escalation_reason="provider_unavailable", tool_events=tool_events, trace_id=trace_id)
-            self.audit.event(trace_id, "response", "provider_unavailable", started, sources=",".join(sources), tool_count=len(tool_events))
+            response = AgentResponse(answer, Decision.ESCALATE, RiskLevel.MEDIUM, "provider_unavailable", sources=sources, escalation_reason="provider_unavailable", tool_events=tool_events, plan=[step.as_dict() for step in execution_plan], trace_id=trace_id)
+            self.audit.event(
+                trace_id,
+                "response",
+                "provider_unavailable",
+                started,
+                sources=",".join(sources),
+                tool_count=len(tool_events),
+                error_type=type(error).__name__,
+                provider_error=safe_error[:300],
+            )
             return response
         if contains_unsafe_commitment(answer):
             response = AgentResponse("I cannot safely provide that action. Please use your bank's official support channel.", Decision.ESCALATE, RiskLevel.HIGH, "unsafe_generated_commitment", sources=sources, escalation_reason="post_generation_safety_gate", tool_events=tool_events, trace_id=trace_id)
         elif not evidence:
-            response = AgentResponse(answer, Decision.ESCALATE, assessment.risk, assessment.intent, escalation_reason="insufficient_approved_evidence", tool_events=tool_events, trace_id=trace_id)
+            response = AgentResponse(answer, Decision.ESCALATE, assessment.risk, assessment.intent, escalation_reason="insufficient_approved_evidence", tool_events=tool_events, plan=[step.as_dict() for step in execution_plan], trace_id=trace_id)
         else:
-            response = AgentResponse(answer, Decision.ANSWER, assessment.risk, assessment.intent, sources=sources, tool_events=tool_events, trace_id=trace_id)
+            response = AgentResponse(answer, Decision.ANSWER, assessment.risk, assessment.intent, sources=sources, tool_events=tool_events, plan=[step.as_dict() for step in execution_plan], trace_id=trace_id)
             if sources:
                 session.add(f"topic:{sources[0]}")
         self.audit.event(trace_id, "response", response.decision.value, started, sources=",".join(sources), tool_count=len(tool_events), memory_items=len(session.items))

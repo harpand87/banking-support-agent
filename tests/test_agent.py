@@ -28,3 +28,18 @@ def test_session_reset_is_safe():
     agent.handle("Tell me about the student account", "demo")
     agent.reset_session("demo")
     assert agent.sessions["demo"].context() == []
+
+
+def test_provider_failure_is_safe_and_logs_sanitized_error(caplog):
+    class FailingModel:
+        def answer(self, question, evidence, style="balanced"):
+            raise RuntimeError("temporary OpenAI provider failure: OPENAI_API_KEY=SECRET")
+
+    agent = BankingAgent(model=FailingModel())
+    with caplog.at_level("INFO", logger="banking_agent"):
+        response = agent.handle("What is the monthly fee for the Everyday Account?")
+
+    assert response.decision == Decision.ESCALATE
+    assert response.escalation_reason == "provider_unavailable"
+    assert "SECRET" not in caplog.text
+    assert "provider_error" in caplog.text
